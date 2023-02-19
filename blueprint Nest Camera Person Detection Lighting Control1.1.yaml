@@ -1,0 +1,171 @@
+blueprint:
+  name: Nest Camera Person Detection Lighting Control (v1.1)
+  description: Turn on/off lights based on person detection from one or more Nest cameras or motion sensors, with support for sunrise/sunset offsets, dynamic timeouts, and multi-room control.
+
+  domain: automation
+  input:
+    camera_entities:
+      name: Nest Cameras
+      description: A list of one or more Nest camera entity IDs that will trigger the automation (optional). Separate multiple IDs with commas. Example: camera.living_room, camera.bedroom. Default: None.
+      selector:
+        entity:
+          domain: camera
+      multiple: true
+    motion_entities:
+      name: Motion Sensors
+      description: A list of one or more motion sensor entity IDs that will trigger the automation (optional). Separate multiple IDs with commas. Example: binary_sensor.motion_living_room, binary_sensor.motion_bedroom. Default: None.
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: motion
+      multiple: true
+    light_entities:
+      name: Lights
+      description: A list of one or more light entity IDs that will be controlled by the automation. Separate multiple IDs with commas. Example: light.living_room, light.kitchen. Required.
+      selector:
+        entity:
+          domain: light
+      multiple: true
+    scene_entities:
+      name: Scenes
+      description: A list of one or more scene entity IDs to activate when the automation triggers (optional). Separate multiple IDs with commas. Example: scene.relax, scene.focus. Default: None.
+      selector:
+        entity:
+          domain: scene
+      multiple: true
+    max_lux:
+      name: Maximum Luminosity
+      description: The maximum luminosity level (in lux) at which the automation will trigger (optional). Must be a number between 0 and 500. Example: 50. Default: 50.
+      default: 50
+      selector:
+        number:
+          min: 0
+          max: 500
+          mode: box
+    timeout_multiplier:
+      name: Timeout Multiplier
+      description: The amount of time (in seconds) to multiply the dynamic timeout by (optional). Must be a number greater than or equal to 0. Example: 1.5. Default: 1.
+      default: 1
+      selector:
+        number:
+          min: 0
+    use_advanced_logic:
+      name: Use Advanced Logic
+      description: Whether to use the advanced logic to control the lights (optional). If disabled, the basic functionality will be used. Default: false.
+      selector:
+        boolean:
+      default: false
+    use_custom_logic:
+      name: Use Custom Logic
+      description: Whether to use custom YAML code for the action sequence (optional). If enabled, the custom YAML code will be included in the action sequence. Default: false.
+      selector:
+        boolean:
+      default: false
+    custom_logic:
+      name: Custom Logic
+      description: Custom YAML code for the action sequence (optional). Only used if "Use Custom Logic" is enabled. Default: {}
+      selector:
+        text:
+
+  mode: single
+
+  trigger:
+    - platform: event
+      event_type: nest_cam_person
+      event_data:
+        {% if camera_entities is defined %}
+          entity_id: {{ camera_entities | join(",") }}
+        {% endif %}
+        {% if motion_entities is defined %}
+          entity_id: {{ motion_entities | join(",") }}
+        {% endif %}
+        is_person: true
+
+  condition: >
+    {% if max_lux | float > 0 %}
+      {{ trigger.event.data.lux | float <= max_lux | float }}
+    {% else %}
+      true
+    {% endif %}
+  condition: >
+    {% if max_lux | float > 0 %}
+      {{ trigger.event.data.lux | float <= max_lux | float }}
+    {% else %}
+      true
+    {% endif %}
+
+  action:
+    {% if use_custom_logic %}
+      {{ custom_logic | default('') }}
+    {% else %}
+      {% if use_advanced_logic %}
+        {% for light_entity in light_entities %}
+        - choose:
+            - conditions: "{{ states(light_entity) == 'off' }}"
+              sequence:
+                - choose:
+                    {% if scene_entities %}
+                      - conditions: "{{ is_state('sun.sun', 'below_horizon') }}"
+                        sequence:
+                          - service: scene.turn_on
+                            entity_id: {{ scene_entities | join(",") }}
+                    {% endif %}
+                    - conditions: "{{ timeout_multiplier | float > 0 }}"
+                      sequence:
+                        - wait_template: "{{ states('binary_sensor.motion_sensor') == 'off' }}"
+                          timeout: "{{ timeout_multiplier | float * trigger.event.data.person_detected }}"
+                    - conditions: "{{ is_state('sun.sun', 'above_horizon') }}"
+                      sequence:
+                        - service: light.turn_on
+                          target:
+                            entity_id: {{ light_entity }}
+                          data:
+                            brightness_pct: 100
+            - conditions: "{{ states(light_entity) == 'on' }}"
+              sequence:
+                - choose:
+                    {% if scene_entities %}
+                      - conditions: "{{ is_state('sun.sun', 'below_horizon') }}"
+                        sequence:
+                          - service: scene.turn_on
+                            entity_id: {{ scene_entities | join(",") }}
+                    {% endif %}
+                    - conditions: "{{ timeout_multiplier | float > 0 }}"
+                      sequence:
+                        - wait_template: "{{ states('binary_sensor.motion_sensor') == 'off' }}"
+                          timeout: "{{ timeout_multiplier | float * trigger.event.data.person_detected }}"
+                    - conditions: "{{ is_state('sun.sun', 'above_horizon') }}"
+                      sequence:
+                        - service: light.turn_off
+                          target:
+                            entity_id: {{ light_entity }}
+        {% endfor %}
+      {% else %}
+        - choose:
+            {% if scene_entities %}
+              - conditions: "{{ is_state('sun.sun', 'below_horizon') }}"
+                sequence:
+                  - service: scene.turn_on
+                    entity_id: {{ scene_entities | join(",") }}
+            {% endif %}
+            - conditions: "{{ timeout_multiplier | float > 0 }}"
+              sequence:
+                - wait_template: "{{ states('binary_sensor.motion_sensor') == 'off' }}"
+                  timeout: "{{ timeout_multiplier | float * trigger.event.data.person_detected }}"
+            - conditions: "{{ is_state('sun.sun', 'above_horizon') }}"
+              sequence:
+                - choose:
+                    - conditions: "{{ trigger.event.data.person_detected }}"
+                      sequence:
+                        - service: light.turn_on
+                          target:
+                            entity_id: {{ light_entities | join(",") }}
+                          data:
+                            brightness_pct: 100
+                    - conditions: "{{ not trigger.event.data.person_detected }}"
+                      sequence:
+                        - service: light.turn_off
+                          target:
+                            entity_id: {{ light_entities | join(",") }}
+        {% endif %}
+    {% endif %}
