@@ -8,8 +8,8 @@ blueprint:
       selector:
         entity:
           device_class: motion, occupancy
-      state_attributes:
-        person: true
+          attributes:
+            person: true
       default: []
     lights_scenes:
       name: Lights or Scenes
