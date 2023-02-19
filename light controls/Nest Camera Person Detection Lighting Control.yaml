@@ -1,0 +1,96 @@
+blueprint:
+  name: Nest Camera and Sensor Lighting Control
+  description: Turn on/off lights or scenes based on person detection from one or more Nest cameras or sensors. Support for sunrise/sunset offsets, dynamic timeouts, multi-room control, and additional sensor types beyond Nest cameras and motion sensors.
+
+variables:
+  nest_cameras_sensors:
+    name: Nest Cameras and Sensors
+    description: A list of Nest cameras and sensors to be used for person detection.
+    selector:
+      entity:
+        domain: camera, binary_sensor
+        device_class: nest
+  additional_sensors:
+    name: Additional Sensors
+    description: A list of additional sensors beyond Nest cameras and motion sensors, such as door sensors, temperature sensors, and humidity sensors.
+    selector:
+      entity:
+        domain: sensor
+  lights_scenes:
+    name: Lights or Scenes
+    description: A list of lights or scenes to control.
+    selector:
+      target:
+        entity:
+          domain: light, scene
+  offset:
+    name: Sunrise/Sunset Offset
+    description: Time offset from sunrise or sunset to adjust automation.
+    default: "00:00:00"
+    selector:
+      time:
+  thresholds:
+    name: Thresholds
+    description: A list of thresholds to trigger automation based on person detection activity.
+    default:
+      - activity_score: 1
+        timeout_multiplier: 1
+    selector:
+      list:
+        fields:
+          activity_score:
+            name: Activity Score
+            description: The threshold for activity score that will trigger automation.
+            required: true
+            example: 1
+          timeout_multiplier:
+            name: Timeout Multiplier
+            description: The multiplier to adjust the timeout duration.
+            required: true
+            example: 1
+
+trigger:
+  platform: state
+  entity_id: !input nest_cameras_sensors
+  attribute: activity_zones
+  from: "inactive"
+  to: "active"
+
+condition:
+  condition: or
+  conditions:
+    - condition: sun
+      before: sunrise
+      after_offset: !input offset
+    - condition: sun
+      after: sunset
+      before_offset: !input offset
+
+action:
+  - variables:
+      timeout_duration: >-
+        {% if trigger.to_state.attributes.score >= 1 %}
+          {{ (1 - trigger.to_state.attributes.score) * (10 - 3 * now().hour) * (0.8 + 0.1 * threshold_multiplier) }}
+        {% else %}
+          0
+        {% endif %}
+  - choose:
+      - conditions: >
+          {{ states(trigger.entity_id) | selectattr('attributes.activity_zones', 'eq', 'active') | list | length > 0 }}
+        sequence:
+          - choose:
+              - conditions: >
+                  {{ states(lights_scenes) | selectattr('state', 'eq', 'on') | list | length > 0 }}
+                sequence:
+                  - service: homeassistant.turn_off
+                    entity_id: !input lights_scenes
+                  - delay: "{{ timeout_duration }}"
+                  - service: homeassistant.turn_on
+                    entity_id: !input lights_scenes
+      - conditions: >
+          {{ states(trigger.entity_id) | selectattr('attributes.activity_zones', 'eq', 'inactive') | list | length > 0 }}
+        sequence:
+          - service: homeassistant.turn_off
+            entity_id: !input lights_scenes
+
+mode: single
