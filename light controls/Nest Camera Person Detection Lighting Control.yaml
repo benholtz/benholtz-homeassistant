@@ -1,29 +1,27 @@
 blueprint:
+  domain: automation
   name: Nest Camera and Sensor Lighting Control
   description: Turn on/off lights or scenes based on person detection from one or more Nest cameras or sensors. Support for sunrise/sunset offsets, dynamic timeouts, multi-room control, and additional sensor types beyond Nest cameras and motion sensors.
-  domain: automation
-
-input:
-  nest_cameras_sensors:
-    name: Nest Cameras and Sensors
-    description: A list of Nest cameras and sensors to be used for person detection.
-    selector:
-      entity:
-        domain: camera, binary_sensor
-        device_class: nest
-  lights_scenes:
-    name: Lights or Scenes
-    description: A list of lights or scenes to control.
-    selector:
-      target:
+  input:
+    nest_cameras_sensors:
+      name: Nest Cameras and Sensors
+      selector:
         entity:
-          domain: light, scene
-  offset:
-    name: Sunrise/Sunset Offset
-    description: Time offset from sunrise or sunset to adjust automation.
-    default: "00:00:00"
-    selector:
-      time:
+          domain: camera, binary_sensor
+          device_class: nest
+      default: []
+    lights_scenes:
+      name: Lights or Scenes
+      selector:
+        target:
+          entity:
+            domain: light, scene
+      default: []
+    offset:
+      name: Sunrise/Sunset Offset
+      selector:
+        time:
+      default: "00:00:00"
 
 variables:
   additional_sensors:
