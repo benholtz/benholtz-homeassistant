@@ -1,14 +1,15 @@
 blueprint:
   domain: automation
-  name: Nest Camera and Sensor Lighting Control
-  description: Turn on/off lights or scenes based on person detection from one or more Nest cameras or sensors. Support for sunrise/sunset offsets, dynamic timeouts, multi-room control, and additional sensor types beyond Nest cameras and motion sensors.
+  name: Camera and Sensor Lighting Control
+  description: Turn on/off lights or scenes based on person detection from one or more cameras or sensors. Support for sunrise/sunset offsets, dynamic timeouts, multi-room control, and additional sensor types beyond cameras and motion sensors.
   input:
-    nest_cameras_sensors:
-      name: Nest Cameras and Sensors
+    cameras_sensors:
+      name: Cameras and Sensors
       selector:
         entity:
-          domain: camera, binary_sensor
-          device_class: nest
+          device_class: motion, occupancy
+          attributes:
+            person: true
       default: []
     lights_scenes:
       name: Lights or Scenes
@@ -26,7 +27,7 @@ blueprint:
 variables:
   additional_sensors:
     name: Additional Sensors
-    description: A list of additional sensors beyond Nest cameras and motion sensors, such as door sensors, temperature sensors, and humidity sensors.
+    description: A list of additional sensors beyond cameras and motion sensors, such as door sensors, temperature sensors, and humidity sensors.
     selector:
       entity:
         domain: sensor
@@ -52,10 +53,10 @@ variables:
 
 trigger:
   platform: state
-  entity_id: !input nest_cameras_sensors
-  attribute: activity_zones
-  from: "inactive"
-  to: "active"
+  entity_id: !input cameras_sensors
+  attribute: motion
+  from: "off"
+  to: "on"
 
 condition:
   condition: or
@@ -77,7 +78,7 @@ action:
         {% endif %}
   - choose:
       - conditions: >
-          {{ states(trigger.entity_id) | selectattr('attributes.activity_zones', 'eq', 'active') | list | length > 0 }}
+          {{ states(trigger.entity_id) | selectattr('state', 'eq', 'on') | list | length > 0 }}
         sequence:
           - choose:
               - conditions: >
@@ -89,7 +90,7 @@ action:
                   - service: homeassistant.turn_on
                     entity_id: !input lights_scenes
       - conditions: >
-          {{ states(trigger.entity_id) | selectattr('attributes.activity_zones', 'eq', 'inactive') | list | length > 0 }}
+          {{ states(trigger.entity_id) | selectattr('state', 'eq', 'off') | list | length > 0 }}
         sequence:
           - service: homeassistant.turn_off
             entity_id: !input lights_scenes
