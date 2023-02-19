@@ -8,7 +8,7 @@ blueprint:
       selector:
         entity:
           device_class: motion, occupancy
-          attributes:
+          state_attributes:
             person: true
       default: []
     lights_scenes:
