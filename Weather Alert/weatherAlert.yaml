@@ -81,7 +81,7 @@ blueprint:
       description: Action to take when windows and doors need to be closed.
       selector:
         action: {}
-  source_url: https://github.com/your/repository
+  source_url: https://github.com/benholtz/benholtz-homeassistant
 
 variables:
   last_notification_time: "1970-01-01T00:00:00.000000+00:00"
