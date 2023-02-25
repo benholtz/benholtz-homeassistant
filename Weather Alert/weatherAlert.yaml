@@ -136,26 +136,43 @@ action:
         sequence:
           - service: input.close_window_action
 
-      default:
-        - sequence:
-            - service: persistent_notification.create
-              data:
-                title: "Desirable Weather Monitor"
-                message: >-
-                  {% set outside_temp = states(input.outside_temperature_sensor) | float %}
-                  {% set inside_temp = states(input.inside_temperature_sensor) | float %}
-                  {% set outside_humidity = states(input.outside_humidity_sensor) | float %}
-                  {% set inside_humidity = states(input.inside_humidity_sensor) | float %}
-                  {% set min_temp = input.min_temperature | float %}
-                  {% set max_temp = input.max_temperature | float %}
-                  {% set min_humidity = input.min_humidity | float %}
-                  {% set max_humidity = input.max_humidity | float %}
-                  {% set window_open = is_state('binary_sensor.window', 'on') or is_state('binary_sensor.door', 'on') %}
-                  {% if outside_temp < min_temp %}
-                    The outside temperature is {{ outside_temp }}°F, which is below the desirable range of {{ min_temp }}°F to {{ max_temp }}°F. Please consider opening windows and doors.
-                  {% elif outside_temp > max_temp %}
-                    The outside temperature is {{ outside_temp }}°F, which is above the desirable range of {{ min_temp }}°F to {{ max_temp }}°F. Please consider closing windows and doors.
-                  {% elif window_open %}
-                    The outside temperature is within the desirable range, but windows and doors are open. Please consider closing them.
-                  {% endif %}
+      # Send a notification if the windows and doors are closed and the temperature is still not within the desirable range
+      - conditions:
+          - condition: template
+            value_template: >-
+              {% set outside_temp = states(input.outside_temperature_sensor) | float %}
+              {% set inside_temp = states(input.inside_temperature_sensor) | float %}
+              {% set outside_humidity = states(input.outside_humidity_sensor) | float %}
+              {% set inside_humidity = states(input.inside_humidity_sensor) | float %}
+              {% set min_temp = input.min_temperature | float %}
+              {% set max_temp = input.max_temperature | float %}
+              {% set min_humidity = input.min_humidity | float %}
+              {% set max_humidity = input.max_humidity | float %}
+              {% set window_open = is_state('binary_sensor.window', 'on') or is_state('binary_sensor.door', 'on') %}
+              {% set notification_threshold = as_timestamp(now()) - as_timestamp(last_notification_time) >= 3600 %}
+              {% if (outside_temp < min_temp or outside_temp > max_temp or outside_humidity < min_humidity or outside_humidity > max_humidity) and not window_open and notification_threshold %}
+                {% set last_notification_time = now() %}
+                true
+              {% endif %}
+        sequence:
+          - service: persistent_notification.create
+            data:
+              title: "Desirable Weather Monitor"
+              message: >-
+                {% set outside_temp = states(input.outside_temperature_sensor) | float %}
+                {% set inside_temp = states(input.inside_temperature_sensor) | float %}
+                {% set outside_humidity = states(input.outside_humidity_sensor) | float %}
+                {% set inside_humidity = states(input.inside_humidity_sensor) | float %}
+                {% set min_temp = input.min_temperature | float %}
+                {% set max_temp = input.max_temperature | float %}
+                {% set min_humidity = input.min_humidity | float %}
+                {% set max_humidity = input.max_humidity | float %}
+                {% if outside_temp < min_temp %}
+                  The outside temperature is {{ outside_temp }}°F, which is below the desirable range of {{ min_temp }}°F to {{ max_temp }}°F. Please consider opening windows and doors.
+                {% elif outside_temp > max_temp %}
+                  The outside temperature is {{ outside_temp }}°F, which is above the desirable range of {{ min_temp }}°F to {{ max_temp }}°F. Please consider closing windows and doors.
+                {% elif window_open %}
+                  The outside temperature is within the desirable range, but windows and doors are open. Please consider closing them.
+                {% endif %}
+
 
