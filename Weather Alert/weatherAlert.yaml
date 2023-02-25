@@ -25,7 +25,6 @@ blueprint:
           min: -50
           max: 120
           step: 1
-          default: 68
     max_temperature:
       name: Maximum desirable temperature
       description: Maximum temperature that is desirable outside and inside.
@@ -36,7 +35,6 @@ blueprint:
           min: -50
           max: 120
           step: 1
-          default: 72
     outside_humidity_sensor:
       name: Outside humidity sensor
       description: Sensor that provides the humidity outside.
@@ -59,7 +57,6 @@ blueprint:
           min: 0
           max: 100
           step: 1
-          default: 40
     max_humidity:
       name: Maximum desirable humidity
       description: Maximum humidity that is desirable outside and inside.
@@ -70,7 +67,6 @@ blueprint:
           min: 0
           max: 100
           step: 1
-          default: 60
     open_window_action:
       name: Open window action
       description: Action to take when windows and doors need to be opened.
@@ -89,6 +85,7 @@ variables:
 trigger:
   - platform: time_pattern
     minutes: "/15"
+
 condition:
   # Check if the outside temperature is outside the desirable range for at least 15 minutes
   - condition: template
