@@ -6,19 +6,16 @@ blueprint:
     outside_temperature_sensor:
       name: Outside temperature sensor
       description: Sensor that provides the temperature outside.
-      selector:
         entity:
           domain: sensor
     inside_temperature_sensor:
       name: Inside temperature sensor
       description: Sensor that provides the temperature inside.
-      selector:
         entity:
           domain: sensor
     min_temperature:
       name: Minimum desirable temperature
       description: Minimum temperature that is desirable outside and inside.
-      selector:
         number:
           unit_of_measurement: °F
           mode: slider
@@ -29,7 +26,6 @@ blueprint:
     max_temperature:
       name: Maximum desirable temperature
       description: Maximum temperature that is desirable outside and inside.
-      selector:
         number:
           unit_of_measurement: °F
           mode: slider
@@ -40,19 +36,16 @@ blueprint:
     outside_humidity_sensor:
       name: Outside humidity sensor
       description: Sensor that provides the humidity outside.
-      selector:
         entity:
           domain: sensor
     inside_humidity_sensor:
       name: Inside humidity sensor
       description: Sensor that provides the humidity inside.
-      selector:
         entity:
           domain: sensor
     min_humidity:
       name: Minimum desirable humidity
       description: Minimum humidity that is desirable outside and inside.
-      selector:
         number:
           unit_of_measurement: '%'
           mode: slider
@@ -63,7 +56,6 @@ blueprint:
     max_humidity:
       name: Maximum desirable humidity
       description: Maximum humidity that is desirable outside and inside.
-      selector:
         number:
           unit_of_measurement: '%'
           mode: slider
@@ -74,12 +66,10 @@ blueprint:
     open_window_action:
       name: Open window action
       description: Action to take when windows and doors need to be opened.
-      selector:
         action: {}
     close_window_action:
       name: Close window action
       description: Action to take when windows and doors need to be closed.
-      selector:
         action: {}
   source_url: https://github.com/benholtz/benholtz-homeassistant
 
