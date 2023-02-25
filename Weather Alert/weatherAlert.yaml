@@ -1,0 +1,190 @@
+blueprint:
+  name: Desirable Weather Notification
+  description: Sends notifications if the weather outside is within or outside a desired range.
+
+  domain: automation
+  input:
+    indoor_temperature_sensor:
+      name: Indoor temperature sensor
+      description: The sensor that measures the indoor temperature.
+      selector:
+        entity:
+          domain: sensor
+    outdoor_temperature_sensor:
+      name: Outdoor temperature sensor
+      description: The sensor that measures the outdoor temperature.
+      selector:
+        entity:
+          domain: sensor
+    indoor_humidity_sensor:
+      name: Indoor humidity sensor
+      description: The sensor that measures the indoor humidity.
+      selector:
+        entity:
+          domain: sensor
+    outdoor_humidity_sensor:
+      name: Outdoor humidity sensor
+      description: The sensor that measures the outdoor humidity.
+      selector:
+        entity:
+          domain: sensor
+    min_temperature:
+      name: Minimum temperature
+      description: The minimum desired temperature.
+      selector:
+        number:
+          min: -50
+          max: 100
+          step: 1
+          unit_of_measurement: "°F"
+    max_temperature:
+      name: Maximum temperature
+      description: The maximum desired temperature.
+      selector:
+        number:
+          min: -50
+          max: 100
+          step: 1
+          unit_of_measurement: "°F"
+    min_humidity:
+      name: Minimum humidity
+      description: The minimum desired humidity.
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+    max_humidity:
+      name: Maximum humidity
+      description: The maximum desired humidity.
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+    notify_device:
+      name: Notification device
+      description: The device to notify.
+      selector:
+        entity:
+          domain: mobile_app
+    duration:
+      name: Notification duration
+      description: The amount of time to wait before sending another notification.
+      default: "01:00:00"
+      selector:
+        duration:
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: !input 'outdoor_temperature_sensor'
+  - platform: state
+    entity_id: !input 'outdoor_humidity_sensor'
+
+condition:
+  # Check if the outdoor temperature is within the desired range.
+  - condition: numeric_state
+    entity_id: !input 'outdoor_temperature_sensor'
+    above: !input 'min_temperature'
+    below: !input 'max_temperature'
+  # Check if the outdoor humidity is within the desired range (if specified).
+  - condition: template
+    value_template: >-
+      {% if min_humidity is defined and max_humidity is defined %}
+        {{ states(input.outdoor_humidity_sensor) | int >= min_humidity }}
+        and
+        {{ states(input.outdoor_humidity_sensor) | int <= max_humidity }}
+      {% else %}
+        true
+      {% endif %}
+  # Check if the doors and windows are closed.
+  - condition: state
+    entity_id: binary_sensor.all_doors_and_windows
+    state: 'off'
+
+action:
+  - variables:
+      duration: !input 'duration'
+      notify_device: !input 'notify_device'
+  - choose:
+      # If the outdoor temperature and humidity are within the desired range.
+      - conditions:
+          - condition: template
+            value_template: >-
+              {% if min_humidity is defined and max_humidity is defined %}
+                {{ states(input.outdoor_humidity_sensor) | int >= min_humidity }}
+                and
+                {{ states(input.outdoor_humidity_sensor) | int <= max_humidity }}
+              {% else %}
+                true
+              {% endif %}
+          - condition: numeric_state
+            entity_id: !input 'outdoor_temperature_sensor'
+            above: !input 'min_temperature'
+            below: !input 'max_temperature'
+        sequence:
+          # Check if the windows or doors are open.
+          - choose:
+              # If they are open, notify the user to close them.
+              - conditions:
+                  - condition: state
+                    entity_id: binary_sensor.all_doors_and_windows
+                    state: 'on'
+                sequence:
+                  - service: notify.mobile_app
+                    data:
+                      title: "Weather Alert"
+                      message: "It's a nice day! Open the windows and doors to let in fresh air."
+                      data:
+                        actions:
+                          - action: CLOSE
+                            title: "Close windows and doors"
+                      target:
+                        entity_id: !input 'notify_device'
+                      tag: "weather_alert"
+              # If they are closed, do nothing.
+              - conditions:
+                  - condition: state
+                    entity_id: binary_sensor.all_doors_and_windows
+                    state: 'off'
+                sequence:
+                  - service: persistent_notification.dismiss
+                    data:
+                      notification_id: "weather_alert"
+
+          # Wait for the specified duration before sending another notification.
+          - delay: '{{ duration }}'
+
+          # Check if the windows or doors are open.
+          - choose:
+              # If they are open, do nothing.
+              - conditions:
+                  - condition: state
+                    entity_id: binary_sensor.all_doors_and_windows
+                    state: 'on'
+                sequence:
+                  - service: persistent_notification.dismiss
+                    data:
+                      notification_id: "weather_alert"
+              # If they are closed, notify the user to close them.
+              - conditions:
+                  - condition: state
+                    entity_id: binary_sensor.all_doors_and_windows
+                    state: 'off'
+                sequence:
+                  - service: notify.mobile_app
+                    data:
+                      title: "Weather Alert"
+                      message: "It's getting too hot/cold/humid! Close the windows and doors to keep the temperature comfortable."
+                      data:
+                        actions:
+                          - action: OPEN
+                            title: "Open windows and doors"
+                      target:
+                        entity_id: !input 'notify_device'
+                      tag: "weather_alert"
