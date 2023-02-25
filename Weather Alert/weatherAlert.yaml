@@ -80,33 +80,38 @@ variables:
   last_notification_time: "1970-01-01T00:00:00.000000+00:00"
 
 trigger:
-  - platform: time_pattern
-    minutes: "/15"
+  - platform: template
+    value_template: >
+      {{ states('input.outside_temperature_sensor') }}
+      {{ states('input.inside_temperature_sensor') }}
+      {{ states('input.outside_humidity_sensor') }}
+      {{ states('input.inside_humidity_sensor') }}
+      {{ states('binary_sensor.window') }}
+      {{ states('binary_sensor.door') }}
 
 condition:
   # Check if the outside temperature is outside the desirable range for at least 15 minutes
   - condition: template
     value_template: >-
-      {% set outside_temp = states(input.outside_temperature_sensor) | float %}
-      {% set inside_temp = states(input.inside_temperature_sensor) | float %}
-      {% set outside_humidity = states(input.outside_humidity_sensor) | float %}
-      {% set inside_humidity = states(input.inside_humidity_sensor) | float %}
-      {% set min_temp = input.min_temperature | float %}
-      {% set max_temp = input.max_temperature | float %}
-      {% set min_humidity = input.min_humidity | float %}
-      {% set max_humidity = input.max_humidity | float %}
+      {% set outside_temp = states('input.outside_temperature_sensor') | float %}
+      {% set inside_temp = states('input.inside_temperature_sensor') | float %}
+      {% set outside_humidity = states('input.outside_humidity_sensor') | float %}
+      {% set inside_humidity = states('input.inside_humidity_sensor') | float %}
+      {% set min_temp = states('input.min_temperature') | float %}
+      {% set max_temp = states('input.max_temperature') | float %}
+      {% set min_humidity = states('input.min_humidity') | float %}
+      {% set max_humidity = states('input.max_humidity') | float %}
       {% set window_open = is_state('binary_sensor.window', 'on') or is_state('binary_sensor.door', 'on') %}
-      {% set notification_threshold = as_timestamp(now()) - as_timestamp(last_notification_time) >= 3600 %}
+      {% set notification_threshold = as_timestamp(now()) - as_timestamp(states('last_notification_time')) >= 3600 %}
       {% if outside_temp < min_temp or outside_temp > max_temp or outside_humidity < min_humidity or outside_humidity > max_humidity %}
         {% if not window_open and notification_threshold %}
           {% set last_notification_time = now() %}
           true
         {% endif %}
       {% elif window_open and notification_threshold %}
-        {% set last_notification_time = now() %}
-        true
+        {% set last_notification_time = now() %}        true
       {% endif %}
-      
+
 action:
   - choose:
       # Open windows and doors
