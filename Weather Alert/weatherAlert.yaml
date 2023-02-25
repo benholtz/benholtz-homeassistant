@@ -2,6 +2,7 @@ blueprint:
   name: Desirable Weather Monitor
   description: Monitor weather sensors to prompt users to open or close windows and doors based on desirable ranges.
   domain: automation
+
   input:
     outside_temperature_sensor:
       name: Outside temperature sensor
@@ -20,21 +21,19 @@ blueprint:
       description: Minimum temperature that is desirable outside and inside.
       selector:
         number:
-          unit_of_measurement: °F
-          mode: slider
-          min: -50
-          max: 120
+          min: 40
+          max: 100
           step: 1
+          unit_of_measurement: "°F"
     max_temperature:
       name: Maximum desirable temperature
       description: Maximum temperature that is desirable outside and inside.
       selector:
         number:
-          unit_of_measurement: °F
-          mode: slider
-          min: -50
-          max: 120
+          min: 40
+          max: 100
           step: 1
+          unit_of_measurement: "°F"
     outside_humidity_sensor:
       name: Outside humidity sensor
       description: Sensor that provides the humidity outside.
@@ -52,21 +51,19 @@ blueprint:
       description: Minimum humidity that is desirable outside and inside.
       selector:
         number:
-          unit_of_measurement: '%'
-          mode: slider
           min: 0
           max: 100
           step: 1
+          unit_of_measurement: "%"
     max_humidity:
       name: Maximum desirable humidity
       description: Maximum humidity that is desirable outside and inside.
       selector:
         number:
-          unit_of_measurement: '%'
-          mode: slider
           min: 0
           max: 100
           step: 1
+          unit_of_measurement: "%"
     open_window_action:
       name: Open window action
       description: Action to take when windows and doors need to be opened.
