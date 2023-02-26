@@ -131,7 +131,7 @@ action:
       - conditions:
           - condition: template
             value_template: >-
-              {{ states('input.outside_temperature_sensor') | float < states('input.min_temperature') | float }}
+              {{ states('input.outside_temperature_sensor', default='0') | float < states('input.min_temperature', default='0') | float }}
           - condition: template
             value_template: "{{ not is_state('group.windows_and_doors', 'on') }}"
         sequence:
@@ -141,8 +141,7 @@ action:
       - conditions:
         - condition: template
           value_template: >-
-            {{ states('input.outside_temperature_sensor') | float >
-            states('input.max_temperature') | float }}
+            {{ states('input.outside_temperature_sensor', default='0') | float > states('input.max_temperature', default='0') | float }}
         - condition: template
           value_template: >-
             {{ is_state('group.windows_and_doors', 'on') }}
