@@ -105,13 +105,6 @@ condition:
   # Check if the outside temperature is outside the desirable range for at least 15 minutes
   - condition: template
     value_template: >-
-      {% set outside_temp = states
-
-
-condition:
-  # Check if the outside temperature is outside the desirable range for at least 15 minutes
-  - condition: template
-    value_template: >-
       {% set outside_temp = states('input.outside_temperature_sensor') | float %}
       {% set inside_temp = states('input.inside_temperature_sensor') | float %}
       {% set outside_humidity = states('input.outside_humidity_sensor') | float %}
