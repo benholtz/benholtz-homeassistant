@@ -74,6 +74,18 @@ blueprint:
       description: Action to take when windows and doors need to be closed.
       selector:
         action: {}
+    door_sensor:
+      name: Door sensor
+      description: Sensor that detects if the door is open.
+      selector:
+        entity:
+          domain: binary_sensor
+    window_sensor:
+      name: Window sensor
+      description: Sensor that detects if the window is open.
+      selector:
+        entity:
+          domain: binary_sensor
   source_url: https://github.com/benholtz/benholtz-homeassistant
 
 variables:
@@ -86,8 +98,15 @@ trigger:
       {{ states('input.inside_temperature_sensor') }}
       {{ states('input.outside_humidity_sensor') }}
       {{ states('input.inside_humidity_sensor') }}
-      {{ states('binary_sensor.window') }}
-      {{ states('binary_sensor.door') }}
+      {{ states('input.window_sensor') }}
+      {{ states('input.door_sensor') }}
+
+condition:
+  # Check if the outside temperature is outside the desirable range for at least 15 minutes
+  - condition: template
+    value_template: >-
+      {% set outside_temp = states
+
 
 condition:
   # Check if the outside temperature is outside the desirable range for at least 15 minutes
@@ -101,7 +120,7 @@ condition:
       {% set max_temp = states('input.max_temperature') | float %}
       {% set min_humidity = states('input.min_humidity') | float %}
       {% set max_humidity = states('input.max_humidity') | float %}
-      {% set window_open = is_state('binary_sensor.window', 'on') or is_state('binary_sensor.door', 'on') %}
+      {% set window_open = is_state('group.windows_and_doors', 'on') %}
       {% set notification_threshold = as_timestamp(now()) - as_timestamp(states('last_notification_time')) >= 3600 %}
       {% if outside_temp < min_temp or outside_temp > max_temp or outside_humidity < min_humidity or outside_humidity > max_humidity %}
         {% if not window_open and notification_threshold %}
@@ -109,7 +128,8 @@ condition:
           true
         {% endif %}
       {% elif window_open and notification_threshold %}
-        {% set last_notification_time = now() %}        true
+        {% set last_notification_time = now() %}
+        true
       {% endif %}
 
 action:
@@ -117,20 +137,22 @@ action:
       # Open windows and doors
       - conditions:
           - condition: template
-            value_template: "{{ states(input.outside_temperature_sensor) | float < input.min_temperature | float }}"
+            value_template: >-
+              {{ states('input.outside_temperature_sensor') | float < states('input.min_temperature') | float }}
           - condition: template
-            value_template: "{{ not is_state('binary_sensor.window', 'on') }}"
-          - condition: template
-            value_template: "{{ not is_state('binary_sensor.door', 'on') }}"
+            value_template: "{{ not is_state('group.windows_and_doors', 'on') }}"
         sequence:
           - service: input.open_window_action
 
       # Close windows and doors
       - conditions:
-          - condition: template
-            value_template: "{{ states(input.outside_temperature_sensor) | float > input.max_temperature | float }}"
-          - condition: template
-            value_template: "{{ is_state('binary_sensor.window', 'on') or is_state('binary_sensor.door', 'on') }}"
+        - condition: template
+          value_template: >-
+            {{ states('input.outside_temperature_sensor') | float >
+            states('input.max_temperature') | float }}
+        - condition: template
+          value_template: >-
+            {{ is_state('group.windows_and_doors', 'on') }}
         sequence:
           - service: input.close_window_action
 
@@ -138,16 +160,16 @@ action:
       - conditions:
           - condition: template
             value_template: >-
-              {% set outside_temp = states(input.outside_temperature_sensor) | float %}
-              {% set inside_temp = states(input.inside_temperature_sensor) | float %}
-              {% set outside_humidity = states(input.outside_humidity_sensor) | float %}
-              {% set inside_humidity = states(input.inside_humidity_sensor) | float %}
-              {% set min_temp = input.min_temperature | float %}
-              {% set max_temp = input.max_temperature | float %}
-              {% set min_humidity = input.min_humidity | float %}
-              {% set max_humidity = input.max_humidity | float %}
-              {% set window_open = is_state('binary_sensor.window', 'on') or is_state('binary_sensor.door', 'on') %}
-              {% set notification_threshold = as_timestamp(now()) - as_timestamp(last_notification_time) >= 3600 %}
+              {% set outside_temp = states('input.outside_temperature_sensor') | float %}
+              {% set inside_temp = states('input.inside_temperature_sensor') | float %}
+              {% set outside_humidity = states('input.outside_humidity_sensor') | float %}
+              {% set inside_humidity = states('input.inside_humidity_sensor') | float %}
+              {% set min_temp = states('input.min_temperature') | float %}
+              {% set max_temp = states('input.max_temperature') | float %}
+              {% set min_humidity = states('input.min_humidity') | float %}
+              {% set max_humidity = states('input.max_humidity') | float %}
+              {% set window_open = is_state('group.windows_and_doors', 'on') %}
+              {% set notification_threshold = as_timestamp(now()) - as_timestamp(states('last_notification_time')) >= 3600 %}
               {% if (outside_temp < min_temp or outside_temp > max_temp or outside_humidity < min_humidity or outside_humidity > max_humidity) and not window_open and notification_threshold %}
                 {% set last_notification_time = now() %}
                 true
@@ -157,14 +179,14 @@ action:
             data:
               title: "Desirable Weather Monitor"
               message: >-
-                {% set outside_temp = states(input.outside_temperature_sensor) | float %}
-                {% set inside_temp = states(input.inside_temperature_sensor) | float %}
-                {% set outside_humidity = states(input.outside_humidity_sensor) | float %}
-                {% set inside_humidity = states(input.inside_humidity_sensor) | float %}
-                {% set min_temp = input.min_temperature | float %}
-                {% set max_temp = input.max_temperature | float %}
-                {% set min_humidity = input.min_humidity | float %}
-                {% set max_humidity = input.max_humidity | float %}
+                {% set outside_temp = states('input.outside_temperature_sensor') | float %}
+                {% set inside_temp = states('input.inside_temperature_sensor') | float %}
+                {% set outside_humidity = states('input.outside_humidity_sensor') | float %}
+                {% set inside_humidity = states('input.inside_humidity_sensor') | float %}
+                {% set min_temp = states('input.min_temperature') | float %}
+                {% set max_temp = states('input.max_temperature') | float %}
+                {% set min_humidity = states('input.min_humidity') | float %}
+                {% set max_humidity = states('input.max_humidity') | float %}
                 {% if outside_temp < min_temp %}
                   The outside temperature is {{ outside_temp }}°F, which is below the desirable range of {{ min_temp }}°F to {{ max_temp }}°F. Please consider opening windows and doors.
                 {% elif outside_temp > max_temp %}
